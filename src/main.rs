@@ -39,7 +39,7 @@ fn write_color(dst: &mut dyn Write, color: Color) {
     .unwrap();
 }
 
-fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> bool {
+fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
     let oc = ray.origin() - center;
 
     let a = ray.dir.dot(&ray.dir);
@@ -48,12 +48,18 @@ fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> bool {
 
     let discriminant = b * b - 4.0 * a * c;
 
-    discriminant > 0.0
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        (-b - discriminant.sqrt()) / (2.0 * a)
+    }
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    if hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.4, ray) {
-        return Color::new(1.0, 0.0, 0.0);
+    let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, ray);
+    if t > 0.0 {
+        let n = ray.at(t) - Vector3::new(0.0, 0.0, -1.0);
+        return 0.5 * Color::new(n.x + 1.0, n.y + 1.0, n.z + 1.0);
     }
 
     // Get unit_directrion from ray
@@ -71,7 +77,7 @@ fn main() {
     let image_height = (image_width as f64 / aspect_ratio) as i32;
 
     // Camera
-    let focal_length = 2.0;
+    let focal_length = 1.0;
     let viewport_height = 2.0;
     // TODO: Try to use also aspect_ratio here
     // More in '4.2 Sending Rays Into the Scene'
