@@ -26,8 +26,55 @@ impl Ray {
     fn origin(&self) -> Point3 {
         self.orig
     }
-    fn at(&self, t: f64) -> Vector3 {
-        self.orig.coords + t * self.dir
+    fn at(&self, t: f64) -> Point3 {
+        self.orig + t * self.dir
+    }
+}
+
+struct hit_record {
+    p: Point3,
+    normal: Vector3,
+    t: f64,
+}
+
+trait hittable {
+    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record>;
+}
+
+struct Sphere {
+    center: Point3,
+    radius: f64,
+}
+
+impl hittable for Sphere {
+    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record> {
+        let oc = ray.origin() - self.center;
+
+        let a = length_squared(&ray.dir);
+        let half_b = oc.dot(&ray.dir);
+        let c = length_squared(&oc) - self.radius * self.radius;
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0.0 {
+            return None;
+        }
+
+        let sqrtd = discriminant.sqrt();
+
+        // Find the nearest root that lies in the acceptable range.
+        let mut root = (-half_b - sqrtd) / a;
+        if root <= ray_tmin || root >= ray_tmax {
+            root = (-half_b + sqrtd) / a;
+            if root <= ray_tmin || ray_tmax <= root {
+                return None;
+            }
+        }
+
+        return Some(hit_record{
+            t: root,
+            p: ray.at(root),
+            normal: (ray.at(root) - self.center) / self.radius,
+        })
     }
 }
 
@@ -57,6 +104,7 @@ fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
         (-half_b - discriminant.sqrt()) / a
     }
 }
+
 
 fn ray_color(ray: &Ray) -> Color {
     let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, ray);
