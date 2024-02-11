@@ -7,6 +7,10 @@ type Point3 = na::Point3<f64>;
 type Vector3 = na::Vector3<f64>;
 type Color = na::Vector3<f64>;
 
+fn length_squared(v: &Vector3) -> f64 {
+    v.x * v.x + v.y * v.y + v.z * v.z
+}
+
 struct Ray {
     orig: Point3,
     dir: Vector3,
@@ -42,16 +46,15 @@ fn write_color(dst: &mut dyn Write, color: Color) {
 fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
     let oc = ray.origin() - center;
 
-    let a = ray.dir.dot(&ray.dir);
-    let b = 2.0 * oc.dot(&ray.dir);
-    let c = oc.dot(&oc) - radius * radius;
-
-    let discriminant = b * b - 4.0 * a * c;
+    let a = length_squared(&ray.dir);
+    let half_b = oc.dot(&ray.dir);
+    let c = length_squared(&oc) - radius * radius;
+    let discriminant = half_b * half_b - a * c;
 
     if discriminant < 0.0 {
         -1.0
     } else {
-        (-b - discriminant.sqrt()) / (2.0 * a)
+        (-half_b - discriminant.sqrt()) / a
     }
 }
 
