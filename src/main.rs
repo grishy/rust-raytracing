@@ -2,12 +2,41 @@ use std::fs::File;
 use std::io::prelude::*;
 
 extern crate nalgebra as na;
-use na::Vector3;
 
-type Color = Vector3<i32>;
+type Point3 = na::Point3<f64>;
+type Vector3 = na::Vector3<f64>;
+type Color = na::Vector3<f64>;
+
+struct Ray {
+    orig: Point3,
+    dir: Vector3,
+}
+
+impl Ray {
+    fn new(orig: Point3, dir: Vector3) -> Ray {
+        Ray {
+            orig: orig,
+            dir: dir,
+        }
+    }
+    fn origin(&self) -> Point3 {
+        self.orig
+    }
+    fn at(&self) -> Vector3 {
+        self.dir
+    }
+}
 
 fn write_color(dst: &mut dyn Write, color: Color) {
-    writeln!(dst, "{} {} {}", color[0], color[1], color[2]).unwrap();
+    // Write the translated [0,255] value of each color component.
+    writeln!(
+        dst,
+        "{} {} {}",
+        (255.999 * color[0]) as i32,
+        (255.999 * color[1]) as i32,
+        (255.999 * color[2]) as i32
+    )
+    .unwrap();
 }
 
 fn main() {
@@ -28,11 +57,7 @@ fn main() {
             let g = j as f64 / (image_height - 1) as f64;
             let b = 0 as f64;
 
-            let ir = (255.999 * r) as i32;
-            let ig = (255.999 * g) as i32;
-            let ib = (255.999 * b) as i32;
-
-            let pixel = Color::new(ir, ig, ib);
+            let pixel = Color::new(r, g, b);
             write_color(&mut image_file, pixel);
         }
     }
