@@ -39,7 +39,23 @@ fn write_color(dst: &mut dyn Write, color: Color) {
     .unwrap();
 }
 
+fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> bool {
+    let oc = ray.origin() - center;
+
+    let a = ray.dir.dot(&ray.dir);
+    let b = 2.0 * oc.dot(&ray.dir);
+    let c = oc.dot(&oc) - radius * radius;
+
+    let discriminant = b * b - 4.0 * a * c;
+
+    discriminant > 0.0
+}
+
 fn ray_color(ray: &Ray) -> Color {
+    if hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.4, ray) {
+        return Color::new(1.0, 0.0, 0.0);
+    }
+
     // Get unit_directrion from ray
     let unit_direction = na::Unit::new_normalize(ray.dir);
     let a = 0.5 * (unit_direction.y) + 1.0;
