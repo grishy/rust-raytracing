@@ -57,9 +57,43 @@ trait hittable {
     fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record>;
 }
 
+struct hittable_list {
+    objects: Vec<Box<dyn hittable>>,
+}
+
+impl hittable_list {
+    fn new()-> hittable_list {
+        hittable_list{
+            objects: vec![],
+        }
+    }
+    fn add(&mut self, object: Box<dyn hittable>) {
+        self.objects.push(object);
+    }
+}
+
+impl hittable for hittable_list {
+    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record> {
+        for obj in &self.objects {
+            if let Some(hit_req) = obj.hit(ray, ray_tmin, ray_tmax) {
+                return Some(hit_req);
+            }
+        }
+        None
+    }
+}
+
 struct Sphere {
     center: Point3,
     radius: f64,
+}
+impl Sphere {
+    fn new(center: Point3, radius: f64) -> Sphere {
+        Sphere{
+            center: center,
+            radius: radius,
+        }
+    }
 }
 
 impl hittable for Sphere {
@@ -126,11 +160,9 @@ fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
     }
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, ray);
-    if t > 0.0 {
-        let n = ray.at(t) - Vector3::new(0.0, 0.0, -1.0);
-        return 0.5 * Color::new(n.x + 1.0, n.y + 1.0, n.z + 1.0);
+fn ray_color(ray: &Ray, world: &Box<hittable_list>) -> Color {
+    if let Some(h) = world.hit(ray, 0.0, std::f64::MAX) {
+        return 0.5 * Color::new(h.normal.x + 1.0, h.normal.y + 1.0, h.normal.z + 1.0);
     }
 
     // Get unit_directrion from ray
@@ -146,6 +178,11 @@ fn main() {
 
     let image_width = 400;
     let image_height = (image_width as f64 / aspect_ratio) as i32;
+
+    // World
+    let mut world = Box::new(hittable_list::new());
+    world.add(Box::new(Sphere::new(Point3::new(0.0,0.0,-1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Point3::new(0.0,-100.5,-1.0), 100.0)));
 
     // Camera
     let focal_length = 1.0;
@@ -182,7 +219,7 @@ fn main() {
 
             let r = Ray::new(camera_center, ray_direction);
 
-            let pixel_color = ray_color(&r);
+            let pixel_color = ray_color(&r,  &world);
             write_color(&mut image_file, pixel_color);
         }
     }
