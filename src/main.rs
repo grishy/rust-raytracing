@@ -35,6 +35,22 @@ struct hit_record {
     p: Point3,
     normal: Vector3,
     t: f64,
+    front_face: bool,
+}
+
+impl hit_record {
+    fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vector3) {
+        // Sets the hit record normal vector.
+        // NOTE: the parameter `outward_normal` is assumed to have unit length.
+
+        self.front_face = ray.dir.dot(&outward_normal) < 0.0;
+        // TODO: Avoid clone
+        self.normal = if self.front_face {
+            outward_normal.clone()
+        } else {
+            -outward_normal.clone()
+        };
+    }
 }
 
 trait hittable {
@@ -70,11 +86,16 @@ impl hittable for Sphere {
             }
         }
 
-        return Some(hit_record{
+        let mut hit = hit_record {
             t: root,
             p: ray.at(root),
-            normal: (ray.at(root) - self.center) / self.radius,
-        })
+            front_face: false,
+            normal: Vector3::zeros(),
+        };
+        let outward_normal = (ray.at(root) - self.center) / self.radius;
+        hit.set_face_normal(ray, &outward_normal);
+
+        return Some(hit);
     }
 }
 
@@ -104,7 +125,6 @@ fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
         (-half_b - discriminant.sqrt()) / a
     }
 }
-
 
 fn ray_color(ray: &Ray) -> Color {
     let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, ray);
