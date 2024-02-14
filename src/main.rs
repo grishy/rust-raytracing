@@ -1,3 +1,6 @@
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+use itertools::Itertools;
+use rayon::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -62,10 +65,8 @@ struct hittable_list {
 }
 
 impl hittable_list {
-    fn new()-> hittable_list {
-        hittable_list{
-            objects: vec![],
-        }
+    fn new() -> hittable_list {
+        hittable_list { objects: vec![] }
     }
     fn add(&mut self, object: Box<dyn hittable>) {
         self.objects.push(object);
@@ -89,7 +90,7 @@ struct Sphere {
 }
 impl Sphere {
     fn new(center: Point3, radius: f64) -> Sphere {
-        Sphere{
+        Sphere {
             center: center,
             radius: radius,
         }
@@ -176,13 +177,13 @@ fn main() {
     // Params
     let aspect_ratio = 16.0 / 9.0;
 
-    let image_width = 400;
+    let image_width = 600;
     let image_height = (image_width as f64 / aspect_ratio) as i32;
 
     // World
     let mut world = Box::new(hittable_list::new());
-    world.add(Box::new(Sphere::new(Point3::new(0.0,0.0,-1.0), 0.5)));
-    world.add(Box::new(Sphere::new(Point3::new(0.0,-100.5,-1.0), 100.0)));
+    world.add(Box::new(Sphere::new(Point3::new(0.0, 0.1, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     // Camera
     let focal_length = 1.0;
@@ -210,18 +211,23 @@ fn main() {
     let mut image_file = File::create("target/image.ppm").unwrap();
     writeln!(image_file, "P3\n{} {}\n255", image_width, image_height).unwrap();
 
-    for j in 0..image_height {
-        println!("\rScanlines remaining: {}", (image_height - j));
-        for i in 0..image_width {
-            let pixel_center =
-                pixel00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
-            let ray_direction = pixel_center - camera_center;
+    let pb = ProgressBar::new(image_width as u64 * image_height as u64);
+    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})")
+        .unwrap()
+        .progress_chars("#>-"));
 
-            let r = Ray::new(camera_center, ray_direction);
 
-            let pixel_color = ray_color(&r,  &world);
-            write_color(&mut image_file, pixel_color);
-        }
+    for (y, x) in (0..image_height).cartesian_product(0..image_width) {
+        let pixel_center =
+        pixel00_loc + (x as f64 * pixel_delta_u) + (y as f64 * pixel_delta_v);
+        let ray_direction = pixel_center - camera_center;
+
+        let r = Ray::new(camera_center, ray_direction);
+
+        let pixel_color = ray_color(&r, &world);
+        write_color(&mut image_file, pixel_color);
+        pb.inc(1);
     }
-    println!("Done");
+
+    pb.finish();
 }
