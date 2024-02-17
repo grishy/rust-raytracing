@@ -1,6 +1,6 @@
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use itertools::Itertools;
-use rayon::prelude::*;
+use std::ops::Range;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -57,7 +57,7 @@ impl hit_record {
 }
 
 trait hittable {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record>;
+    fn hit(&self, ray: &Ray, ray_t: Range<f64>) -> Option<hit_record>;
 }
 
 struct hittable_list {
@@ -74,9 +74,9 @@ impl hittable_list {
 }
 
 impl hittable for hittable_list {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record> {
+    fn hit(&self, ray: &Ray, ray_t: Range<f64>) -> Option<hit_record> {
         for obj in &self.objects {
-            if let Some(hit_req) = obj.hit(ray, ray_tmin, ray_tmax) {
+            if let Some(hit_req) = obj.hit(ray, ray_t.clone()) {
                 return Some(hit_req);
             }
         }
@@ -98,7 +98,7 @@ impl Sphere {
 }
 
 impl hittable for Sphere {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<hit_record> {
+    fn hit(&self, ray: &Ray, ray_t: Range<f64>) -> Option<hit_record> {
         let oc = ray.origin() - self.center;
 
         let a = length_squared(&ray.dir);
@@ -114,9 +114,9 @@ impl hittable for Sphere {
 
         // Find the nearest root that lies in the acceptable range.
         let mut root = (-half_b - sqrtd) / a;
-        if root <= ray_tmin || root >= ray_tmax {
+        if !ray_t.contains( &root) {
             root = (-half_b + sqrtd) / a;
-            if root <= ray_tmin || ray_tmax <= root {
+            if !ray_t.contains( &root) {
                 return None;
             }
         }
@@ -146,23 +146,9 @@ fn write_color(dst: &mut dyn Write, color: Color) {
     .unwrap();
 }
 
-fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin() - center;
-
-    let a = length_squared(&ray.dir);
-    let half_b = oc.dot(&ray.dir);
-    let c = length_squared(&oc) - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (-half_b - discriminant.sqrt()) / a
-    }
-}
-
 fn ray_color(ray: &Ray, world: &Box<hittable_list>) -> Color {
-    if let Some(h) = world.hit(ray, 0.0, std::f64::MAX) {
+    let range = Range { start: 0.0, end: std::f64::MAX };
+    if let Some(h) = world.hit(ray, range) {
         return 0.5 * Color::new(h.normal.x + 1.0, h.normal.y + 1.0, h.normal.z + 1.0);
     }
 
@@ -177,7 +163,7 @@ fn main() {
     // Params
     let aspect_ratio = 16.0 / 9.0;
 
-    let image_width = 600;
+    let image_width = 400;
     let image_height = (image_width as f64 / aspect_ratio) as i32;
 
     // World
@@ -212,14 +198,16 @@ fn main() {
     writeln!(image_file, "P3\n{} {}\n255", image_width, image_height).unwrap();
 
     let pb = ProgressBar::new(image_width as u64 * image_height as u64);
-    pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})")
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
+        )
         .unwrap()
-        .progress_chars("#>-"));
-
+        .progress_chars("#>-"),
+    );
 
     for (y, x) in (0..image_height).cartesian_product(0..image_width) {
-        let pixel_center =
-        pixel00_loc + (x as f64 * pixel_delta_u) + (y as f64 * pixel_delta_v);
+        let pixel_center = pixel00_loc + (x as f64 * pixel_delta_u) + (y as f64 * pixel_delta_v);
         let ray_direction = pixel_center - camera_center;
 
         let r = Ray::new(camera_center, ray_direction);

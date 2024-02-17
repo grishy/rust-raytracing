@@ -1,5 +1,8 @@
 # Rust Ray Tracer
 
+## TLDR
+TODO: gif with progress
+
 ## Source
 https://raytracing.github.io/
 
