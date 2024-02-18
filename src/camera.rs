@@ -22,6 +22,7 @@ pub struct Camera {
     pixel_delta_u: Vector3, // Offset to pixel to the right
     pixel_delta_v: Vector3, // Offset to pixel below
     samples_per_pixel: i32, // Count of random samples for each pixel
+    max_depth: i32,         // Maximum depth of recursion
 }
 
 impl Camera {
@@ -60,6 +61,7 @@ impl Camera {
             pixel_delta_u: pixel_delta_u,
             pixel_delta_v: pixel_delta_v,
             samples_per_pixel: 100,
+            max_depth: 10,
         }
     }
 
@@ -82,7 +84,7 @@ impl Camera {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
                     let r = self.get_ray(x, y);
-                    pixel_color += ray_color(&r, &world);
+                    pixel_color += ray_color(&r, self.max_depth, &world);
                 }
 
                 // Divide the color by the number of samples.
@@ -137,17 +139,53 @@ impl Camera {
     }
 }
 
-fn ray_color(ray: &ray::Ray, world: &HittableList) -> Color {
+fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
     let range = Range {
-        start: 0.0,
+        start: 0.001,
         end: std::f64::MAX,
     };
+
+    if depth <= 0 {
+        return Color::new(0.0, 0.0, 0.0);
+    }
+
     match world.hit(ray, range) {
-        Some(h) => 0.5 * Color::new(h.normal.x + 1.0, h.normal.y + 1.0, h.normal.z + 1.0),
+        Some(h) => {
+            let direction = random_on_hemisphere(h.normal);
+            let new_ray = ray::Ray::new(h.p, direction);
+            0.5 * ray_color(&new_ray, depth - 1, world)
+        }
         None => {
             let unit_direction = na::Unit::new_normalize(ray.dir);
             let a = 0.5 * (unit_direction.y) + 1.0;
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
+        }
+    }
+}
+
+fn random_on_hemisphere(normal: Vector3) -> Vector3 {
+    let on_unit_sphere = random_unit_vector();
+    if on_unit_sphere.dot(&normal) > 0.0 {
+        on_unit_sphere
+    } else {
+        -on_unit_sphere
+    }
+}
+
+fn random_unit_vector() -> Vector3 {
+    return random_in_unit_sphere().normalize();
+}
+
+fn random_in_unit_sphere() -> Vector3 {
+    let mut rng = rand::thread_rng();
+    loop {
+        let p = Vector3::new(
+            rng.gen_range(-1.0..1.0),
+            rng.gen_range(-1.0..1.0),
+            rng.gen_range(-1.0..1.0),
+        );
+        if p.norm_squared() < 1.0 {
+            return p;
         }
     }
 }

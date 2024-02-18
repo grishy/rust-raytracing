@@ -15,6 +15,7 @@ pub struct HitRecord {
 }
 
 impl HitRecord {
+    // Called by Sphere::hit
     pub fn set_face_normal(&mut self, ray: &ray::Ray, outward_normal: &Vector3) {
         // Sets the hit record normal vector.
         // NOTE: the parameter `outward_normal` is assumed to have unit length.
