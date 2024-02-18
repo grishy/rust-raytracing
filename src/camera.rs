@@ -60,7 +60,7 @@ impl Camera {
             pixel00_loc: pixel00_loc,
             pixel_delta_u: pixel_delta_u,
             pixel_delta_v: pixel_delta_v,
-            samples_per_pixel: 100,
+            samples_per_pixel: 50,
             max_depth: 10,
         }
     }
@@ -151,7 +151,7 @@ fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
 
     match world.hit(ray, range) {
         Some(h) => {
-            let direction = random_on_hemisphere(h.normal);
+            let direction = h.normal + random_in_unit_sphere();
             let new_ray = ray::Ray::new(h.p, direction);
             0.5 * ray_color(&new_ray, depth - 1, world)
         }
@@ -161,19 +161,6 @@ fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
     }
-}
-
-fn random_on_hemisphere(normal: Vector3) -> Vector3 {
-    let on_unit_sphere = random_unit_vector();
-    if on_unit_sphere.dot(&normal) > 0.0 {
-        on_unit_sphere
-    } else {
-        -on_unit_sphere
-    }
-}
-
-fn random_unit_vector() -> Vector3 {
-    return random_in_unit_sphere().normalize();
 }
 
 fn random_in_unit_sphere() -> Vector3 {
