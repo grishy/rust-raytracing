@@ -32,7 +32,7 @@ impl hittable::Hittable for HittableList {
 fn main() {
     // Params
     let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let image_width = 600;
 
     // Camera
     let camera = camera::Camera::new(aspect_ratio, image_width);

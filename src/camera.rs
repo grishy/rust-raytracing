@@ -1,3 +1,4 @@
+use indicatif::ProgressIterator;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use std::fs::File;
@@ -61,12 +62,6 @@ impl Camera {
 
     pub fn render(&self, output_path: &str, world: &HittableList) {
         let mut image_file = File::create(output_path).unwrap();
-        writeln!(
-            image_file,
-            "P3\n{} {}\n255",
-            self.image_width, self.image_height
-        )
-        .unwrap();
 
         let pb = ProgressBar::new(self.image_width as u64 * self.image_height as u64);
         pb.set_style(
@@ -77,20 +72,39 @@ impl Camera {
             .progress_chars("#>-"),
         );
 
-        for (y, x) in (0..self.image_height).cartesian_product(0..self.image_width) {
-            let pixel_center = self.pixel00_loc
-                + (x as f64 * self.pixel_delta_u)
-                + (y as f64 * self.pixel_delta_v);
-            let ray_direction = pixel_center - self.center;
+        let pixels: Vec<String> = (0..self.image_height)
+            .cartesian_product(0..self.image_width)
+            .map(|(y, x)| {
+                let pixel_center = self.pixel00_loc
+                    + (x as f64 * self.pixel_delta_u)
+                    + (y as f64 * self.pixel_delta_v);
+                let ray_direction = pixel_center - self.center;
+                let r = ray::Ray::new(self.center, ray_direction);
+                let pixel_color = ray_color(&r, &world);
 
-            let r = ray::Ray::new(self.center, ray_direction);
+                format!(
+                    "{} {} {}",
+                    (255.999 * pixel_color.x) as i32,
+                    (255.999 * pixel_color.y) as i32,
+                    (255.999 * pixel_color.z) as i32
+                )
+            })
+            .progress_with(pb)
+            .collect();
 
-            let pixel_color = ray_color(&r, &world);
-            write_color(&mut image_file, pixel_color);
-            pb.inc(1);
-        }
-
-        pb.finish();
+        write!(
+            image_file,
+            "P3
+{} {}
+{}
+{}
+",
+            self.image_width,
+            self.image_height,
+            "255", // Max color value
+            pixels.join("\n")
+        )
+        .unwrap();
     }
 }
 
@@ -107,16 +121,4 @@ fn ray_color(ray: &ray::Ray, world: &HittableList) -> Color {
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
     }
-}
-
-fn write_color(dst: &mut dyn Write, color: Color) {
-    // Write the translated [0,255] value of each color component.
-    writeln!(
-        dst,
-        "{} {} {}",
-        (255.999 * color[0]) as i32,
-        (255.999 * color[1]) as i32,
-        (255.999 * color[2]) as i32
-    )
-    .unwrap();
 }
