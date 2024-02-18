@@ -5,8 +5,8 @@ mod ray;
 mod sphere;
 mod types;
 
-use std::rc::Rc;
 use std::ops::Range;
+use std::rc::Rc;
 use types::*;
 
 pub struct HittableList {
@@ -34,7 +34,7 @@ impl hittable::Hittable for HittableList {
 fn main() {
     // Params
     let aspect_ratio = 16.0 / 9.0;
-    let image_width = 800;
+    let image_width = 1600;
 
     // Camera
     let camera = camera::Camera::new(aspect_ratio, image_width);
@@ -42,13 +42,25 @@ fn main() {
     // World
     let mut world = Box::new(HittableList::new());
     // Materials
-    let material_ground = Rc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
     let material_center = Rc::new(material::Lambertian::new(Color::new(0.7, 0.3, 0.3)));
+    let material_left = Rc::new(material::Metal::new(Color::new(0.1, 0.2, 0.5), 0.3));
+    let material_right = Rc::new(material::Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
+    let material_ground = Rc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
 
     world.add(Box::new(sphere::Sphere::new(
-        Point3::new(0.0, 0.1, -1.0),
+        Point3::new(0.0, 0.0, -1.0),
         0.5,
         material_center,
+    )));
+    world.add(Box::new(sphere::Sphere::new(
+        Point3::new(-1.0, 0.0, -1.0),
+        0.5,
+        material_left,
+    )));
+    world.add(Box::new(sphere::Sphere::new(
+        Point3::new(1.0, 0.0, -1.0),
+        0.5,
+        material_right,
     )));
     world.add(Box::new(sphere::Sphere::new(
         Point3::new(0.0, -100.5, -1.0),
