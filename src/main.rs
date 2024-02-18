@@ -1,9 +1,11 @@
 mod camera;
 mod hittable;
+mod material;
 mod ray;
 mod sphere;
 mod types;
 
+use std::rc::Rc;
 use std::ops::Range;
 use types::*;
 
@@ -39,13 +41,19 @@ fn main() {
 
     // World
     let mut world = Box::new(HittableList::new());
+    // Materials
+    let material_ground = Rc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let material_center = Rc::new(material::Lambertian::new(Color::new(0.7, 0.3, 0.3)));
+
     world.add(Box::new(sphere::Sphere::new(
         Point3::new(0.0, 0.1, -1.0),
         0.5,
+        material_center,
     )));
     world.add(Box::new(sphere::Sphere::new(
         Point3::new(0.0, -100.5, -1.0),
         100.0,
+        material_ground,
     )));
 
     // Render

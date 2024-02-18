@@ -154,9 +154,18 @@ fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
 
     match world.hit(ray, range) {
         Some(h) => {
-            let direction = h.normal + random_in_unit_sphere();
-            let new_ray = ray::Ray::new(h.p, direction);
-            0.5 * ray_color(&new_ray, depth - 1, world)
+            match h.material.scatter(ray, &h){
+                Some((attenuation, scattered)) => {
+                    let color = ray_color(&scattered, depth - 1, world);
+                    return Color::new(
+                        attenuation.x * color.x,
+                        attenuation.y * color.y,
+                        attenuation.z * color.z,
+                    );
+                }
+                None => Color::new(0.0, 0.0, 0.0)   
+            }
+
         }
         None => {
             let unit_direction = na::Unit::new_normalize(ray.dir);

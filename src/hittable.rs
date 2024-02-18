@@ -1,7 +1,9 @@
+use std::rc::Rc;
 use std::ops::Range;
 
 use crate::ray;
 use crate::types::*;
+use crate::material;
 
 pub trait Hittable {
     fn hit(&self, ray: &ray::Ray, ray_t: Range<f64>) -> Option<HitRecord>;
@@ -10,6 +12,7 @@ pub trait Hittable {
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vector3,
+    pub material: Rc<dyn material::Material>,
     pub t: f64,
     pub front_face: bool,
 }
