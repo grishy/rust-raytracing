@@ -1,6 +1,7 @@
 use indicatif::ProgressIterator;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
+use rand::{self, Rng};
 use std::fs::File;
 use std::ops::Range;
 
@@ -20,6 +21,7 @@ pub struct Camera {
     pixel00_loc: Point3,    // Location of pixel 0, 0
     pixel_delta_u: Vector3, // Offset to pixel to the right
     pixel_delta_v: Vector3, // Offset to pixel below
+    samples_per_pixel: i32, // Count of random samples for each pixel
 }
 
 impl Camera {
@@ -57,6 +59,7 @@ impl Camera {
             pixel00_loc: pixel00_loc,
             pixel_delta_u: pixel_delta_u,
             pixel_delta_v: pixel_delta_v,
+            samples_per_pixel: 100,
         }
     }
 
@@ -75,18 +78,22 @@ impl Camera {
         let pixels: Vec<String> = (0..self.image_height)
             .cartesian_product(0..self.image_width)
             .map(|(y, x)| {
-                let pixel_center = self.pixel00_loc
-                    + (x as f64 * self.pixel_delta_u)
-                    + (y as f64 * self.pixel_delta_v);
-                let ray_direction = pixel_center - self.center;
-                let r = ray::Ray::new(self.center, ray_direction);
-                let pixel_color = ray_color(&r, &world);
+                // Send few rays to the pixel
+                let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+                for _ in 0..self.samples_per_pixel {
+                    let r = self.get_ray(x, y);
+                    pixel_color += ray_color(&r, &world);
+                }
+
+                // Divide the color by the number of samples.
+                pixel_color /= self.samples_per_pixel as f64;
+                pixel_color *= 256.0;
 
                 format!(
                     "{} {} {}",
-                    (255.999 * pixel_color.x) as i32,
-                    (255.999 * pixel_color.y) as i32,
-                    (255.999 * pixel_color.z) as i32
+                    (pixel_color.x.clamp(0., 256.)) as i32,
+                    (pixel_color.y.clamp(0., 256.)) as i32,
+                    (pixel_color.z.clamp(0., 256.)) as i32
                 )
             })
             .progress_with(pb)
@@ -105,6 +112,28 @@ impl Camera {
             pixels.join("\n")
         )
         .unwrap();
+    }
+
+    // Get a randomly sampled camera ray for the pixel at location i,j.
+    fn get_ray(&self, x: i32, y: i32) -> ray::Ray {
+        let pixel_center =
+            self.pixel00_loc + (x as f64 * self.pixel_delta_u) + (y as f64 * self.pixel_delta_v);
+        let pixel_sample = self.pixel_sample_square();
+
+        let ray_origin = self.center;
+        let ray_direction = (pixel_center + pixel_sample) - self.center;
+
+        return ray::Ray::new(ray_origin, ray_direction);
+    }
+
+    // Returns a random point in the square surrounding a pixel at the origin.
+    fn pixel_sample_square(&self) -> Vector3 {
+        let mut rng = rand::thread_rng();
+
+        let px = -0.5 + rng.gen_range(0.0..1.0);
+        let py = -0.5 + rng.gen_range(0.0..1.0);
+
+        return (px * self.pixel_delta_u) + (py * self.pixel_delta_v);
     }
 }
 
