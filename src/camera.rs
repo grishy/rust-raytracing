@@ -89,8 +89,11 @@ impl Camera {
 
                 // Divide the color by the number of samples.
                 pixel_color /= self.samples_per_pixel as f64;
-                pixel_color *= 256.0;
 
+                // Apply the linear to gamma transform.
+                pixel_color = Color::new(pixel_color.x.sqrt(), pixel_color.y.sqrt(), pixel_color.z.sqrt());
+
+                pixel_color *= 256.0;
                 format!(
                     "{} {} {}",
                     (pixel_color.x.clamp(0., 256.)) as i32,
