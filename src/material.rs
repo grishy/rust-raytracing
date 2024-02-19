@@ -4,21 +4,22 @@ use rand::Rng;
 
 use crate::types::*;
 
-fn reflect(v: &Vector3, n: &Vector3) -> Vector3 {
-    *v - 2.0 * v.dot(n) * *n
+fn reflect(v: Vector3, n: Vector3) -> Vector3 {
+    v - 2. * v.dot(&n) * n
 }
 
-fn refract(uv: &Vector3, n: &Vector3, etai_over_etat: f64) -> Vector3 {
-    let cos_theta = (-*uv).dot(n).min(1.0);
+fn refract(uv: Vector3, n: Vector3, etai_over_etat: f64) -> Vector3 {
+    let cos_theta = (uv * -1.0).dot(&n).min(1.0);
     let r_out_perp = etai_over_etat * (uv + cos_theta * n);
-    let r_out_parallel = -((1.0 - r_out_perp.norm_squared()).abs()).sqrt() * n;
+    let r_out_parallel = ((1.0 - r_out_perp.magnitude_squared()).abs().sqrt() * -1.0) * n;
     r_out_perp + r_out_parallel
 }
 
 fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
-    // Use Schlick's approximation for reflectance
-    let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powi(2);
-    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+    // Use Schlick's approximation for reflectance.
+    let mut r0 = (1. - ref_idx) / (1. + ref_idx);
+    r0 = r0 * r0;
+    r0 + (1. - r0) * (1. - cosine).powf(5.)
 }
 
 pub trait Material {
@@ -129,27 +130,29 @@ impl Material for Dielectric {
         ray_in: &ray::Ray,
         hit_record: &hittable::HitRecord,
     ) -> Option<(Color, ray::Ray)> {
+        let mut rng = rand::thread_rng();
+
         let attenuation = Color::new(1.0, 1.0, 1.0);
-        let refraction_ratio = if hit_record.front_face {
-            1.0 / self.ir
+        let refraction_ratio: f64 = if hit_record.front_face {
+            self.ir.recip()
         } else {
             self.ir
         };
 
         let unit_direction = ray_in.dir.normalize();
-        let cos_theta = (-unit_direction).dot(&hit_record.normal).min(1.0);
+
+        let cos_theta = (unit_direction.dot(&hit_record.normal) * -1.0).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let is_reflectance = reflectance(cos_theta, refraction_ratio) > rand::thread_rng().gen();
-        let direction = if cannot_refract || is_reflectance {
-            reflect(&unit_direction, &hit_record.normal)
-        } else {
-            refract(&unit_direction, &hit_record.normal, refraction_ratio)
-        };
 
-        let scattered = ray::Ray::new(hit_record.p, direction);
+        let direction =
+            if cannot_refract || reflectance(cos_theta, refraction_ratio) > rng.gen::<f64>() {
+                reflect(unit_direction, hit_record.normal)
+            } else {
+                refract(unit_direction, hit_record.normal, refraction_ratio)
+            };
 
-        Some((attenuation, scattered))
+        Some((attenuation, ray::Ray::new(hit_record.p, direction)))
     }
 }

@@ -33,6 +33,3 @@ impl HitRecord {
     }
 }
 
-pub fn length_squared(v: &Vector3) -> f64 {
-    v.x * v.x + v.y * v.y + v.z * v.z
-}

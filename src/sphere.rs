@@ -2,7 +2,6 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::hittable;
-use crate::hittable::length_squared;
 use crate::hittable::HitRecord;
 use crate::material;
 use crate::ray;
@@ -31,9 +30,9 @@ impl hittable::Hittable for Sphere {
     fn hit(&self, ray: &ray::Ray, ray_t: Range<f64>) -> Option<hittable::HitRecord> {
         let oc = ray.orig - self.center;
 
-        let a = length_squared(&ray.dir);
+        let a = ray.dir.magnitude_squared();
         let half_b = oc.dot(&ray.dir);
-        let c = length_squared(&oc) - self.radius * self.radius;
+        let c = oc.magnitude_squared() - self.radius * self.radius;
         let discriminant = half_b * half_b - a * c;
 
         if discriminant < 0.0 {

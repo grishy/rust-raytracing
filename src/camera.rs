@@ -28,9 +28,9 @@ impl Camera {
     pub fn new() -> Camera {
         let aspect_ratio = 16.0 / 9.0;
         let image_width = 1600;
-        let samples_per_pixel = 300;
-        let max_depth = 30;
-        let vfov: f64 = 50.0;
+        let samples_per_pixel = 600;
+        let max_depth = 200;
+        let vfov: f64 = 30.0;
         let look_from = Point3::new(-2.0, 2.0, 1.0);
         let look_at = Point3::new(0.0, 0.0, -1.0);
         let vup = Vector3::new(0.0, 1.0, 0.0);

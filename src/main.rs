@@ -24,10 +24,15 @@ impl HittableList {
 
 impl hittable::Hittable for HittableList {
     fn hit(&self, ray: &ray::Ray, ray_t: Range<f64>) -> Option<hittable::HitRecord> {
-        self.objects
-            .iter()
-            .flat_map(|obj| obj.hit(ray, ray_t.clone()))
-            .next()
+        let (_closest, hit_record) = self.objects.iter().fold((ray_t.end, None), |acc, item| {
+            if let Some(temp_rec) = item.hit(ray, ray_t.start..acc.0) {
+                (temp_rec.t, Some(temp_rec))
+            } else {
+                acc
+            }
+        });
+
+        hit_record
     }
 }
 
@@ -44,6 +49,11 @@ fn main() {
     let material_left = Arc::new(material::Dielectric::new(1.5));
     let material_right = Arc::new(material::Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
 
+    world.add(Arc::new(sphere::Sphere::new(
+        Point3::new(0.0, -100.5, -1.0),
+        100.0,
+        material_ground,
+    )));
     world.add(Arc::new(sphere::Sphere::new(
         Point3::new(0.0, 0.0, -1.0),
         0.5,
@@ -63,11 +73,6 @@ fn main() {
         Point3::new(1.0, 0.0, -1.0),
         0.5,
         material_right,
-    )));
-    world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(0.0, -100.5, -1.0),
-        100.0,
-        material_ground,
     )));
 
     // Render
