@@ -1,11 +1,10 @@
-use indicatif::ProgressIterator;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rand::{self, Rng};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::fs::File;
-use std::ops::Range;
-
 use std::io::prelude::*;
+use std::ops::Range;
 
 use crate::hittable::Hittable;
 use crate::ray;
@@ -58,8 +57,8 @@ impl Camera {
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
-            samples_per_pixel: 200,
-            max_depth: 30,
+            samples_per_pixel: 500,
+            max_depth: 20,
         }
     }
 
@@ -75,8 +74,10 @@ impl Camera {
             .progress_chars("#>-"),
         );
 
-        let pixels: Vec<String> = (0..self.image_height)
+        let pixels = (0..self.image_height)
             .cartesian_product(0..self.image_width)
+            .collect::<Vec<(i32, i32)>>()
+            .into_par_iter()
             .map(|(y, x)| {
                 // Send few rays to the pixel
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
@@ -96,6 +97,8 @@ impl Camera {
                 );
 
                 pixel_color *= 256.0;
+
+                pb.inc(1);
                 format!(
                     "{} {} {}",
                     (pixel_color.x.clamp(0., 256.)) as i32,
@@ -103,8 +106,8 @@ impl Camera {
                     (pixel_color.z.clamp(0., 256.)) as i32
                 )
             })
-            .progress_with(pb)
-            .collect();
+            .collect::<Vec<String>>()
+            .join("\n");
 
         write!(
             image_file,
@@ -116,9 +119,11 @@ impl Camera {
             self.image_width,
             self.image_height,
             "255", // Max color value
-            pixels.join("\n")
+            pixels
         )
         .unwrap();
+
+        pb.finish()
     }
 
     // Get a randomly sampled camera ray for the pixel at location i,j.

@@ -15,6 +15,12 @@ fn refract(uv: &Vector3, n: &Vector3, etai_over_etat: f64) -> Vector3 {
     r_out_perp + r_out_parallel
 }
 
+fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
+    // Use Schlick's approximation for reflectance
+    let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powi(2);
+    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+}
+
 pub trait Material {
     fn scatter(
         &self,
@@ -135,7 +141,8 @@ impl Material for Dielectric {
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let direction = if cannot_refract {
+        let is_reflectance = reflectance(cos_theta, refraction_ratio) > rand::thread_rng().gen();
+        let direction = if cannot_refract || is_reflectance {
             reflect(&unit_direction, &hit_record.normal)
         } else {
             refract(&unit_direction, &hit_record.normal, refraction_ratio)

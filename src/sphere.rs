@@ -1,5 +1,5 @@
 use std::ops::Range;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::hittable;
 use crate::hittable::length_squared;
@@ -11,10 +11,14 @@ use crate::types::*;
 pub struct Sphere {
     center: Point3,
     radius: f64,
-    material: Rc<dyn material::Material>,
+    material: Arc<dyn material::Material + Send + Sync>,
 }
 impl Sphere {
-    pub fn new(center: Point3, radius: f64, material: Rc<dyn material::Material>) -> Sphere {
+    pub fn new(
+        center: Point3,
+        radius: f64,
+        material: Arc<dyn material::Material + Send + Sync>,
+    ) -> Sphere {
         Sphere {
             center,
             radius,
@@ -51,7 +55,7 @@ impl hittable::Hittable for Sphere {
             t: root,
             p: ray.at(root),
             front_face: false,
-            material: self.material.clone(),
+            material: Arc::clone(&self.material),
             normal: Vector3::zeros(),
         };
         let outward_normal = (ray.at(root) - self.center) / self.radius;

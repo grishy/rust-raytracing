@@ -1,5 +1,5 @@
 use std::ops::Range;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::material;
 use crate::ray;
@@ -12,7 +12,7 @@ pub trait Hittable {
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vector3,
-    pub material: Rc<dyn material::Material>,
+    pub material: Arc<dyn material::Material + Send + Sync>,
     pub t: f64,
     pub front_face: bool,
 }
