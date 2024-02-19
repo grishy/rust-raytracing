@@ -25,29 +25,44 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: i32) -> Camera {
-        let image_height = (image_width as f64 / aspect_ratio) as i32;
+    pub fn new() -> Camera {
+        let aspect_ratio = 16.0 / 9.0;
+        let image_width = 1600;
+        let samples_per_pixel = 300;
+        let max_depth = 30;
+        let vfov: f64 = 50.0;
+        let look_from = Point3::new(-2.0, 2.0, 1.0);
+        let look_at = Point3::new(0.0, 0.0, -1.0);
+        let vup = Vector3::new(0.0, 1.0, 0.0);
 
-        // Camera
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
-        // TODO: Try to use also aspect_ratio here
-        // More in '4.2 Sending Rays Into the Scene'
+        let image_height: i32 = (image_width as f64 / aspect_ratio) as i32;
+
+        let theta = vfov.to_radians();
+        let h = (theta / 2.).tan();
+
+        let focal_length = (look_from - look_at).magnitude();
+        let viewport_height = 2. * h * focal_length;
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
-        let center = Point3::new(0.0, 0.0, 0.0);
 
-        // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_u = Vector3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vector3::new(0.0, -viewport_height, 0.0);
+        let center = look_from;
+
+        // Calculate the u,v,w unit basis vectors for the camera coordinate frame.
+        let w = (look_from - look_at).normalize();
+        let u = vup.cross(&w).normalize();
+        let v = w.cross(&u);
+
+        // ## Calculate the vectors across the horizontal and down the vertical viewport edges.
+        // Vector across viewport horizontal edge
+        let viewport_u = viewport_width * u;
+        // Vector down viewport vertical edge
+        let viewport_v = viewport_height * -v;
 
         // Calculate the horizontal and vertical delta vectors from pixel to pixel.
         let pixel_delta_u = viewport_u / image_width as f64;
         let pixel_delta_v = viewport_v / image_height as f64;
 
         // Calculate the location of the upper left pixel.
-        let viewport_upper_left =
-            center - Vector3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
-
+        let viewport_upper_left = center - focal_length * w - viewport_u / 2. - viewport_v / 2.;
         let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
         Camera {
@@ -57,8 +72,8 @@ impl Camera {
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
-            samples_per_pixel: 500,
-            max_depth: 20,
+            samples_per_pixel,
+            max_depth,
         }
     }
 
