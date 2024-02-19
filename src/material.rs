@@ -4,6 +4,17 @@ use rand::Rng;
 
 use crate::types::*;
 
+fn reflect(v: &Vector3, n: &Vector3) -> Vector3 {
+    *v - 2.0 * v.dot(n) * *n
+}
+
+fn refract(uv: &Vector3, n: &Vector3, etai_over_etat: f64) -> Vector3 {
+    let cos_theta = (-*uv).dot(n).min(1.0);
+    let r_out_perp = etai_over_etat * (uv + cos_theta * n);
+    let r_out_parallel = -((1.0 - r_out_perp.norm_squared()).abs()).sqrt() * n;
+    r_out_perp + r_out_parallel
+}
+
 pub trait Material {
     fn scatter(
         &self,
@@ -120,17 +131,17 @@ impl Material for Dielectric {
         };
 
         let unit_direction = ray_in.dir.normalize();
-        // Calculate refracted ray
-        let etai_over_etat = refraction_ratio;
-        let uv = unit_direction;
-        let normal = hit_record.normal;
+        let cos_theta = (-unit_direction).dot(&hit_record.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let cos_theta = (-uv).dot(&normal).min(1.0);
-        let r_out_perp = etai_over_etat * (uv + cos_theta * normal);
-        let r_out_parallel = -((1.0 - r_out_perp.norm_squared()).abs()).sqrt() * normal;
-        let refract = r_out_perp + r_out_parallel;
+        let cannot_refract = refraction_ratio * sin_theta > 1.0;
+        let direction = if cannot_refract {
+            reflect(&unit_direction, &hit_record.normal)
+        } else {
+            refract(&unit_direction, &hit_record.normal, refraction_ratio)
+        };
 
-        let scattered = ray::Ray::new(hit_record.p, refract);
+        let scattered = ray::Ray::new(hit_record.p, direction);
 
         Some((attenuation, scattered))
     }
