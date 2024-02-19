@@ -18,14 +18,14 @@ pub struct Lambertian {
 
 impl Lambertian {
     pub fn new(albedo: Color) -> Lambertian {
-        Lambertian { albedo: albedo }
+        Lambertian { albedo }
     }
 }
 
 impl Material for Lambertian {
     fn scatter(
         &self,
-        ray_in: &ray::Ray,
+        _ray_in: &ray::Ray,
         hit_record: &hittable::HitRecord,
     ) -> Option<(Color, ray::Ray)> {
         let mut scatter_direction = hit_record.normal + random_in_unit_sphere();
@@ -67,7 +67,7 @@ pub struct Metal {
 impl Metal {
     pub fn new(albedo: Color, fuzz: f64) -> Metal {
         Metal {
-            albedo: albedo,
+            albedo,
             fuzz: if fuzz <= 1.0 { fuzz } else { 1.0 },
         }
     }
@@ -81,7 +81,10 @@ impl Material for Metal {
     ) -> Option<(Color, ray::Ray)> {
         let dir_norm = ray_in.dir.normalize();
         let reflected = dir_norm - 2.0 * dir_norm.dot(&hit_record.normal) * hit_record.normal;
-        let scattered = ray::Ray::new(hit_record.p, reflected + self.fuzz * random_in_unit_sphere());
+        let scattered = ray::Ray::new(
+            hit_record.p,
+            reflected + self.fuzz * random_in_unit_sphere(),
+        );
         let attenuation = self.albedo;
         if scattered.dir.dot(&hit_record.normal) > 0.0 {
             Some((attenuation, scattered))

@@ -16,9 +16,9 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(center: Point3, radius: f64, material: Rc<dyn material::Material>) -> Sphere {
         Sphere {
-            center: center,
-            radius: radius,
-            material: material,
+            center,
+            radius,
+            material,
         }
     }
 }
@@ -57,6 +57,6 @@ impl hittable::Hittable for Sphere {
         let outward_normal = (ray.at(root) - self.center) / self.radius;
         hit.set_face_normal(ray, &outward_normal);
 
-        return Some(hit);
+        Some(hit)
     }
 }

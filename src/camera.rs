@@ -35,7 +35,7 @@ impl Camera {
         // TODO: Try to use also aspect_ratio here
         // More in '4.2 Sending Rays Into the Scene'
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
-        let camera_center = Point3::new(0.0, 0.0, 0.0);
+        let center = Point3::new(0.0, 0.0, 0.0);
 
         // Calculate the vectors across the horizontal and down the vertical viewport edges.
         let viewport_u = Vector3::new(viewport_width, 0.0, 0.0);
@@ -46,20 +46,18 @@ impl Camera {
         let pixel_delta_v = viewport_v / image_height as f64;
 
         // Calculate the location of the upper left pixel.
-        let viewport_upper_left = camera_center
-            - Vector3::new(0.0, 0.0, focal_length)
-            - viewport_u / 2.0
-            - viewport_v / 2.0;
+        let viewport_upper_left =
+            center - Vector3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
 
         let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
         Camera {
-            image_width: image_width,
-            image_height: image_height,
-            center: camera_center,
-            pixel00_loc: pixel00_loc,
-            pixel_delta_u: pixel_delta_u,
-            pixel_delta_v: pixel_delta_v,
+            image_width,
+            image_height,
+            center,
+            pixel00_loc,
+            pixel_delta_u,
+            pixel_delta_v,
             samples_per_pixel: 300,
             max_depth: 30,
         }
@@ -91,7 +89,11 @@ impl Camera {
                 pixel_color /= self.samples_per_pixel as f64;
 
                 // Apply the linear to gamma transform.
-                pixel_color = Color::new(pixel_color.x.sqrt(), pixel_color.y.sqrt(), pixel_color.z.sqrt());
+                pixel_color = Color::new(
+                    pixel_color.x.sqrt(),
+                    pixel_color.y.sqrt(),
+                    pixel_color.z.sqrt(),
+                );
 
                 pixel_color *= 256.0;
                 format!(
@@ -128,7 +130,7 @@ impl Camera {
         let ray_origin = self.center;
         let ray_direction = (pixel_center + pixel_sample) - self.center;
 
-        return ray::Ray::new(ray_origin, ray_direction);
+        ray::Ray::new(ray_origin, ray_direction)
     }
 
     // Returns a random point in the square surrounding a pixel at the origin.
@@ -138,7 +140,7 @@ impl Camera {
         let px = -0.5 + rng.gen_range(0.0..1.0);
         let py = -0.5 + rng.gen_range(0.0..1.0);
 
-        return (px * self.pixel_delta_u) + (py * self.pixel_delta_v);
+        (px * self.pixel_delta_u) + (py * self.pixel_delta_v)
     }
 }
 
@@ -153,38 +155,21 @@ fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
     }
 
     match world.hit(ray, range) {
-        Some(h) => {
-            match h.material.scatter(ray, &h){
-                Some((attenuation, scattered)) => {
-                    let color = ray_color(&scattered, depth - 1, world);
-                    return Color::new(
-                        attenuation.x * color.x,
-                        attenuation.y * color.y,
-                        attenuation.z * color.z,
-                    );
-                }
-                None => Color::new(0.0, 0.0, 0.0)   
+        Some(h) => match h.material.scatter(ray, &h) {
+            Some((attenuation, scattered)) => {
+                let color = ray_color(&scattered, depth - 1, world);
+                Color::new(
+                    attenuation.x * color.x,
+                    attenuation.y * color.y,
+                    attenuation.z * color.z,
+                )
             }
-
-        }
+            None => Color::new(0.0, 0.0, 0.0),
+        },
         None => {
             let unit_direction = na::Unit::new_normalize(ray.dir);
             let a = 0.5 * (unit_direction.y) + 1.0;
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
-        }
-    }
-}
-
-fn random_in_unit_sphere() -> Vector3 {
-    let mut rng = rand::thread_rng();
-    loop {
-        let p = Vector3::new(
-            rng.gen_range(-1.0..1.0),
-            rng.gen_range(-1.0..1.0),
-            rng.gen_range(-1.0..1.0),
-        );
-        if p.norm_squared() < 1.0 {
-            return p;
         }
     }
 }
