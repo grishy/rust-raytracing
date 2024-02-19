@@ -93,3 +93,45 @@ impl Material for Metal {
         }
     }
 }
+
+// Dielectric
+
+pub struct Dielectric {
+    ir: f64, // Index of Refraction
+}
+
+impl Dielectric {
+    pub fn new(ir: f64) -> Dielectric {
+        Dielectric { ir }
+    }
+}
+
+impl Material for Dielectric {
+    fn scatter(
+        &self,
+        ray_in: &ray::Ray,
+        hit_record: &hittable::HitRecord,
+    ) -> Option<(Color, ray::Ray)> {
+        let attenuation = Color::new(1.0, 1.0, 1.0);
+        let refraction_ratio = if hit_record.front_face {
+            1.0 / self.ir
+        } else {
+            self.ir
+        };
+
+        let unit_direction = ray_in.dir.normalize();
+        // Calculate refracted ray
+        let etai_over_etat = refraction_ratio;
+        let uv = unit_direction;
+        let normal = hit_record.normal;
+
+        let cos_theta = (-uv).dot(&normal).min(1.0);
+        let r_out_perp = etai_over_etat * (uv + cos_theta * normal);
+        let r_out_parallel = -((1.0 - r_out_perp.norm_squared()).abs()).sqrt() * normal;
+        let refract = r_out_perp + r_out_parallel;
+
+        let scattered = ray::Ray::new(hit_record.p, refract);
+
+        Some((attenuation, scattered))
+    }
+}

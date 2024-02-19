@@ -42,8 +42,8 @@ fn main() {
     // World
     let mut world = Box::new(HittableList::new());
     // Materials
-    let material_center = Rc::new(material::Lambertian::new(Color::new(0.7, 0.3, 0.3)));
-    let material_left = Rc::new(material::Metal::new(Color::new(0.1, 0.2, 0.5), 0.3));
+    let material_center = Rc::new(material::Dielectric::new(1.5));
+    let material_left = Rc::new(material::Dielectric::new(1.5));
     let material_right = Rc::new(material::Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
     let material_ground = Rc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
 
