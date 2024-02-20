@@ -1,5 +1,8 @@
 # Rust Ray Tracer
 
+## Result
+![Result](./screenshots/result.png)
+
 ## TLDR
 TODO: gif with progress
 
