@@ -5,6 +5,7 @@ mod ray;
 mod sphere;
 mod types;
 
+use rand::Rng;
 use std::ops::Range;
 use std::sync::Arc;
 use types::*;
@@ -44,35 +45,71 @@ fn main() {
     let mut world = HittableList::new();
 
     // Materials
-    let material_ground = Arc::new(material::Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let material_center = Arc::new(material::Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Arc::new(material::Dielectric::new(1.5));
-    let material_right = Arc::new(material::Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
-
+    let material_ground = Arc::new(material::Lambertian::new(Color::new(0.5, 0.5, 0.5)));
     world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(0.0, -100.5, -1.0),
-        100.0,
+        Point3::new(0.0, -1000.0, -1.0),
+        1000.0,
         material_ground,
     )));
+
+    let mut rng = rand::thread_rng();
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = rng.gen_range(0.0..1.0);
+            let center = Point3::new(
+                a as f64 + 0.9 * rng.gen_range(0.0..1.0),
+                0.2,
+                b as f64 + 0.9 * rng.gen_range(0.0..1.0),
+            );
+
+            if (center - Point3::new(4.0, 0.2, 0.0)).magnitude() > 0.9 {
+                let sphere_material: Arc<dyn material::Material + Send + Sync> = if choose_mat < 0.8
+                {
+                    // diffuse
+                    let albedo = Color::new(
+                        rng.gen_range(0.0..1.0),
+                        rng.gen_range(0.0..1.0),
+                        rng.gen_range(0.0..1.0),
+                    );
+                    Arc::new(material::Lambertian::new(albedo))
+                } else if choose_mat < 0.95 {
+                    // metal
+                    let albedo = Color::new(
+                        rng.gen_range(0.0..0.5),
+                        rng.gen_range(0.0..0.5),
+                        rng.gen_range(0.0..0.5),
+                    );
+                    let fuzz = rng.gen_range(0.0..0.5);
+                    Arc::new(material::Metal::new(albedo, fuzz))
+                } else {
+                    // glass
+                    Arc::new(material::Dielectric::new(1.5))
+                };
+                world.add(Arc::new(sphere::Sphere::new(center, 0.2, sphere_material)));
+            }
+        }
+    }
+
+    let material_1 = Arc::new(material::Dielectric::new(1.5));
     world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(0.0, 0.0, -1.0),
-        0.5,
-        material_center,
+        Point3::new(0.0, 1.0, 0.0),
+        1.0,
+        material_1,
     )));
+
+    let material_2 = Arc::new(material::Lambertian::new(Color::new(0.4, 0.2, 0.1)));
     world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(-1.0, 0.0, -1.0),
-        -0.4,
-        material_left.clone(),
+        Point3::new(-4.0, 1.0, 0.0),
+        1.0,
+        material_2,
     )));
+
+    let material_3 = Arc::new(material::Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
     world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(-1.0, 0.0, -1.0),
-        0.5,
-        material_left.clone(),
-    )));
-    world.add(Arc::new(sphere::Sphere::new(
-        Point3::new(1.0, 0.0, -1.0),
-        0.5,
-        material_right,
+        Point3::new(4.0, 1.0, 0.0),
+        1.0,
+        material_3,
     )));
 
     // Render

@@ -20,28 +20,34 @@ pub struct Camera {
     pixel00_loc: Point3,    // Location of pixel 0, 0
     pixel_delta_u: Vector3, // Offset to pixel to the right
     pixel_delta_v: Vector3, // Offset to pixel below
-    samples_per_pixel: i32, // Count of random samples for each pixel
-    max_depth: i32,         // Maximum depth of recursion
+    defocus_angle: f64,
+    defocus_disk_u: Vector3, // Defocus disk horizontal radius
+    defocus_disk_v: Vector3, // Defocus disk vertical radius
+    samples_per_pixel: i32,  // Count of random samples for each pixel
+    max_depth: i32,          // Maximum depth of recursion
 }
 
 impl Camera {
     pub fn new() -> Camera {
         let aspect_ratio = 16.0 / 9.0;
         let image_width = 1600;
-        let samples_per_pixel = 600;
-        let max_depth = 200;
-        let vfov: f64 = 30.0;
-        let look_from = Point3::new(-2.0, 2.0, 1.0);
-        let look_at = Point3::new(0.0, 0.0, -1.0);
+        let samples_per_pixel = 500;
+        let max_depth = 30;
+        let vfov: f64 = 20.0;
+        let look_from = Point3::new(13.0, 2.0, 3.0);
+        let look_at = Point3::new(0.0, 0.0, 0.0);
         let vup = Vector3::new(0.0, 1.0, 0.0);
+
+        // TODO: Focus does not work
+        let defocus_angle = 0.1; // Variation angle of rays through each pixel
+        let focus_dist = 10.2; // Distance from camera lookfrom point to plane of perfect focus
 
         let image_height: i32 = (image_width as f64 / aspect_ratio) as i32;
 
         let theta = vfov.to_radians();
         let h = (theta / 2.).tan();
 
-        let focal_length = (look_from - look_at).magnitude();
-        let viewport_height = 2. * h * focal_length;
+        let viewport_height = 2. * h * focus_dist;
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
 
         let center = look_from;
@@ -62,8 +68,13 @@ impl Camera {
         let pixel_delta_v = viewport_v / image_height as f64;
 
         // Calculate the location of the upper left pixel.
-        let viewport_upper_left = center - focal_length * w - viewport_u / 2. - viewport_v / 2.;
+        let viewport_upper_left = center - focus_dist * w - viewport_u / 2. - viewport_v / 2.;
         let pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+        // Calculate the camera defocus disk basis vectors.
+        let defocus_radius = (defocus_angle / 2.0 as f64).to_radians().tan() * focus_dist;
+        let defocus_disk_u = defocus_radius * u;
+        let defocus_disk_v = defocus_radius * v;
 
         Camera {
             image_width,
@@ -72,6 +83,9 @@ impl Camera {
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
+            defocus_angle,
+            defocus_disk_u,
+            defocus_disk_v,
             samples_per_pixel,
             max_depth,
         }
@@ -141,16 +155,27 @@ impl Camera {
         pb.finish()
     }
 
-    // Get a randomly sampled camera ray for the pixel at location i,j.
+    // Get a randomly-sampled camera ray for the pixel at location i,j, originating from
+    // the camera defocus disk.
     fn get_ray(&self, x: i32, y: i32) -> ray::Ray {
         let pixel_center =
             self.pixel00_loc + (x as f64 * self.pixel_delta_u) + (y as f64 * self.pixel_delta_v);
         let pixel_sample = self.pixel_sample_square();
 
-        let ray_origin = self.center;
+        let ray_origin = if self.defocus_angle < 0.0 {
+            self.center
+        } else {
+            self.defocus_disk_sample()
+        };
         let ray_direction = (pixel_center + pixel_sample) - self.center;
 
         ray::Ray::new(ray_origin, ray_direction)
+    }
+
+    // Returns a random point in the camera defocus disk.
+    fn defocus_disk_sample(&self) -> Point3 {
+        let rd = Camera::random_in_unit_disk();
+        self.center + (self.defocus_disk_u * rd.x) + (self.defocus_disk_v * rd.y)
     }
 
     // Returns a random point in the square surrounding a pixel at the origin.
@@ -161,6 +186,16 @@ impl Camera {
         let py = -0.5 + rng.gen_range(0.0..1.0);
 
         (px * self.pixel_delta_u) + (py * self.pixel_delta_v)
+    }
+
+    fn random_in_unit_disk() -> Vector3 {
+        let mut rng = rand::thread_rng();
+        loop {
+            let p = Vector3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0);
+            if p.magnitude_squared() < 1.0 {
+                return p;
+            }
+        }
     }
 }
 
@@ -188,7 +223,7 @@ fn ray_color(ray: &ray::Ray, depth: i32, world: &HittableList) -> Color {
         },
         None => {
             let unit_direction = na::Unit::new_normalize(ray.dir);
-            let a = 0.5 * (unit_direction.y) + 1.0;
+            let a = 0.8 * (unit_direction.y) + 1.0;
             (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
         }
     }
