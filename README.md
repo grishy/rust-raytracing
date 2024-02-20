@@ -11,7 +11,24 @@ Weekend project to learn Rust by implementing a ray tracer. The project is based
 
 ## Result
 
-#### Final scene
+#### Final scene gif
+
+<p align="center">
+  <img src="./screenshots/render.gif" alt="Final scene gif" width="400" />
+</p>
+
+##### Parameters for gif
+
+| Parameter         | Value      |
+| ----------------- | ---------- |
+| Image size        | 600x337    |
+| Samples per pixel | 200        |
+| Max depth         | 20         |
+| Frames            | 88         |
+| CPU               | 16         |
+| Render time       | 4h 40m 30s |
+
+### Final scene png
 
 ![Result](./screenshots/result.png)
 
