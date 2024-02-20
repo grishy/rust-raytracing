@@ -38,9 +38,6 @@ impl hittable::Hittable for HittableList {
 }
 
 fn main() {
-    // Camera
-    let camera = camera::Camera::new();
-
     // World
     let mut world = HittableList::new();
 
@@ -54,8 +51,10 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    for a in -11..11 {
-        for b in -11..11 {
+    let length = 12;
+
+    for a in -length..length {
+        for b in -length..length {
             let choose_mat = rng.gen_range(0.0..1.0);
             let center = Point3::new(
                 a as f64 + 0.9 * rng.gen_range(0.0..1.0),
@@ -113,5 +112,19 @@ fn main() {
     )));
 
     // Render
-    camera.render("target/image.ppm", &world);
+    // Remove and create the render directory
+    let output_dir = "render";
+    let _ = std::fs::remove_dir_all(output_dir);
+    std::fs::create_dir(output_dir).unwrap();
+
+    for step in 0..90 {
+        println!("Rendering step {}", step);
+        let camera = camera::Camera::new(Point3::new(
+            3.0 + (step as f64) / 10.0,
+            1.1 + (step as f64 - 2.0).powf(1.3) / 100.0,
+            2.0 + (step as f64) / 70.0,
+        ));
+        let filename = format!("{output_dir}/image_{step}.png");
+        camera.render(filename.as_str(), &world);
+    }
 }

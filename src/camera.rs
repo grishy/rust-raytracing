@@ -1,9 +1,8 @@
+use image;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rand::{self, Rng};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::fs::File;
-use std::io::prelude::*;
 use std::ops::Range;
 
 use crate::hittable::Hittable;
@@ -28,13 +27,12 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Camera {
+    pub fn new(look_from: Point3) -> Camera {
         let aspect_ratio = 16.0 / 9.0;
-        let image_width = 1600;
-        let samples_per_pixel = 500;
-        let max_depth = 30;
+        let image_width = 600;
+        let samples_per_pixel = 200;
+        let max_depth = 20;
         let vfov: f64 = 20.0;
-        let look_from = Point3::new(13.0, 2.0, 3.0);
         let look_at = Point3::new(0.0, 0.0, 0.0);
         let vup = Vector3::new(0.0, 1.0, 0.0);
 
@@ -92,7 +90,7 @@ impl Camera {
     }
 
     pub fn render(&self, output_path: &str, world: &HittableList) {
-        let mut image_file = File::create(output_path).unwrap();
+        let mut imgbuf = image::ImageBuffer::new(self.image_width as u32, self.image_height as u32);
 
         let pb = ProgressBar::new(self.image_width as u64 * self.image_height as u64);
         pb.set_style(
@@ -126,31 +124,24 @@ impl Camera {
                 );
 
                 pixel_color *= 256.0;
-
                 pb.inc(1);
-                format!(
-                    "{} {} {}",
-                    (pixel_color.x.clamp(0., 256.)) as i32,
-                    (pixel_color.y.clamp(0., 256.)) as i32,
-                    (pixel_color.z.clamp(0., 256.)) as i32
-                )
+                (y, x, pixel_color)
             })
-            .collect::<Vec<String>>()
-            .join("\n");
+            .collect::<Vec<(i32, i32, Color)>>();
 
-        write!(
-            image_file,
-            "P3
-{} {}
-{}
-{}
-",
-            self.image_width,
-            self.image_height,
-            "255", // Max color value
-            pixels
-        )
-        .unwrap();
+        for (y,x,pixel) in pixels {
+            imgbuf.put_pixel(
+                x as u32,
+                y as u32,
+                image::Rgb([
+                    pixel.x as u8,
+                    pixel.y as u8,
+                    pixel.z as u8,
+                ]),
+            );
+        }
+
+        imgbuf.save(output_path).unwrap();
 
         pb.finish()
     }
